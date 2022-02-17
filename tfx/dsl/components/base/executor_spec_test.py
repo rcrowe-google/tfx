@@ -25,10 +25,6 @@ class _TestSpecWithoutEncode(executor_spec.ExecutorSpec):
     return self
 
 
-class _DummyExecutor(base_executor.BaseExecutor):
-  pass
-
-
 class ExecutorSpecTest(tf.test.TestCase):
 
   def testNotImplementedError(self):
@@ -38,19 +34,25 @@ class ExecutorSpecTest(tf.test.TestCase):
       _TestSpecWithoutEncode().encode()
 
   def testExecutorClassSpecCopy(self):
-    spec = executor_spec.ExecutorClassSpec(_DummyExecutor)
+    class _NestedExecutor(base_executor.BaseExecutor):
+      pass
+    spec = executor_spec.ExecutorClassSpec(_NestedExecutor)
     spec.add_extra_flags('a')
     spec_copy = spec.copy()
     del spec
     self.assertProtoEquals(
         """
-        class_path: "__main__._DummyExecutor"
+        class_path: "__main__._NestedExecutor"
         extra_flags: "a"
         """,
         spec_copy.encode())
 
   def testBeamExecutorSpecCopy(self):
-    spec = executor_spec.BeamExecutorSpec(_DummyExecutor)
+
+    class _NestedExecutor(base_executor.BaseExecutor):
+      pass
+
+    spec = executor_spec.BeamExecutorSpec(_NestedExecutor)
     spec.add_extra_flags('a')
     spec.add_beam_pipeline_args('b')
     spec_copy = spec.copy()
@@ -58,7 +60,7 @@ class ExecutorSpecTest(tf.test.TestCase):
     self.assertProtoEquals(
         """
         python_executor_spec: {
-            class_path: "__main__._DummyExecutor"
+            class_path: "__main__._NestedExecutor"
             extra_flags: "a"
         }
         beam_pipeline_args: "b"

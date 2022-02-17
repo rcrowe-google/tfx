@@ -25,7 +25,6 @@ from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platfor
 from tfx.proto import tuner_pb2
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
-from tfx.utils import name_utils
 from tfx.utils import proto_utils
 
 
@@ -53,8 +52,9 @@ class ExecutorTest(tf.test.TestCase):
             },
         },
     }
-    self._executor_class_path = name_utils.get_full_name(
-        ai_platform_tuner_executor._WorkerExecutor)
+    self._executor_class_path = '%s.%s' % (
+        ai_platform_tuner_executor._WorkerExecutor.__module__,
+        ai_platform_tuner_executor._WorkerExecutor.__name__)
 
     self.addCleanup(mock.patch.stopall)
     self.mock_runner = mock.patch(

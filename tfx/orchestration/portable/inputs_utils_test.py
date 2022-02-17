@@ -22,7 +22,6 @@ import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -31,7 +30,6 @@ from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
-from tfx.utils import name_utils
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
@@ -41,49 +39,42 @@ from ml_metadata.proto import metadata_store_pb2
 _TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-@ops.register
 class IdentityOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return input_dict
 
 
-@ops.register
 class SkippingOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     raise exceptions.SkipSignal()
 
 
-@ops.register
 class BadOutputOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return 'This is not a dict'
 
 
-@ops.register
 class DuplicateOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return [input_dict, input_dict]
 
 
-@ops.register
 class IdentityStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return input_dict
 
 
-@ops.register
 class SkippingStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return None
 
 
-@ops.register
 class BadOutputStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
@@ -329,7 +320,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
   def _append_resolver_step(self, node_pb, cls, config=None):
     step_pb = node_pb.inputs.resolver_config.resolver_steps.add()
-    step_pb.class_path = name_utils.get_full_name(cls)
+    step_pb.class_path = f'{cls.__module__}.{cls.__name__}'
     step_pb.config_json = json_utils.dumps(config or {})
 
   def testResolveInputArtifacts_SkippingStrategy(self):
@@ -469,9 +460,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
 def unprocessed_artifacts_resolvers_available():
   try:
-    mod = importlib.import_module(
+    importlib.import_module(
         'tfx.dsl.resolvers.unprocessed_artifacts_resolver')
-    ops.register(mod.UnprocessedArtifactsResolver)
   except ImportError:
     return False
   else:

@@ -21,7 +21,6 @@ from tfx.dsl.components.base import base_executor
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.utils import import_utils
 from tfx.utils import json_utils
-from tfx.utils import name_utils
 
 from google.protobuf import message
 
@@ -47,8 +46,8 @@ class ExecutorSpec(json_utils.Jsonable):
     """
     # TODO(b/158712976, b/161286496): Serialize executor specs for different
     # platforms.
-    raise NotImplementedError('{} does not support encoding into IR.'.format(
-        name_utils.get_full_name(self.__class__)))
+    raise NotImplementedError('{}.{} does not support encoding into IR.'.format(
+        self.__module__, self.__class__.__name__))
 
   def copy(self) -> 'ExecutorSpec':
     """Makes a copy of the ExecutorSpec.
@@ -102,7 +101,8 @@ class ExecutorClassSpec(ExecutorSpec):
     Returns:
       Fully qualified class name for the executor class.
     """
-    return name_utils.get_full_name(self.executor_class)
+    return '{}.{}'.format(self.executor_class.__module__,
+                          self.executor_class.__name__)
 
   @staticmethod
   def _reconstruct_from_executor_class_path(executor_class_path):

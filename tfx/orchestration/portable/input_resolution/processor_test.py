@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.processor."""
+import importlib
+import sys
 from unittest import mock
 
 import tensorflow as tf
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import processor
 from tfx.proto.orchestration import pipeline_pb2
@@ -27,7 +28,6 @@ from tfx.utils import test_case_utils
 from google.protobuf import text_format
 
 
-@ops.register
 class RepeatStrategy(resolver.ResolverStrategy):
 
   def __init__(self, num: int):
@@ -40,14 +40,12 @@ class RepeatStrategy(resolver.ResolverStrategy):
     return {key: value * self.num for key, value in input_dict.items()}
 
 
-@ops.register
 class NoneStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return None
 
 
-@ops.register
 class RepeatOp(resolver_op.ResolverOp):
   num = resolver_op.ResolverOpProperty(type=int)
 
@@ -56,6 +54,17 @@ class RepeatOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return {key: value * self.num for key, value in input_dict.items()}
+
+
+_original_import_module = importlib.import_module
+
+
+def _import_module(module_path: str):
+  if module_path == (
+      'tfx.orchestration.portable.input_resolution.processor_test'):
+    return sys.modules[__name__]
+  else:
+    return _original_import_module(module_path)
 
 
 class ProcessorTest(test_case_utils.TfxTest):
@@ -67,12 +76,13 @@ class ProcessorTest(test_case_utils.TfxTest):
         'model': [standard_artifacts.Model()],
     }
     self._store = mock.Mock()
+    self.enter_context(mock.patch('importlib.import_module', _import_module))
 
   def testRunResolverSteps_ResolverStrategy(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatStrategy"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatStrategy"
       config_json: "{\"num\": 2}"
     }
     """, config)
@@ -90,11 +100,11 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatStrategy"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatStrategy"
       config_json: "{\"num\": 2}"
     }
     resolver_steps {
-      class_path: "__main__.RepeatStrategy"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatStrategy"
       config_json: "{\"num\": 2}"
     }
     """, config)
@@ -110,7 +120,7 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatStrategy"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatStrategy"
       config_json: "{\"num\": 2}"
       input_keys: ["examples"]
     }
@@ -127,7 +137,7 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse("""
     resolver_steps {
-      class_path: "__main__.NoneStrategy"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.NoneStrategy"
     }
     """, config)
     with self.assertRaises(exceptions.InputResolutionError):
@@ -140,7 +150,7 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatOp"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatOp"
       config_json: "{\"num\": 2}"
     }
     """, config)
@@ -159,11 +169,11 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatOp"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatOp"
       config_json: "{\"num\": 2}"
     }
     resolver_steps {
-      class_path: "__main__.RepeatOp"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatOp"
       config_json: "{\"num\": 2}"
     }
     """, config)
@@ -179,7 +189,7 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatOp"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatOp"
       config_json: "{\"num\": 2}"
       input_keys: ["examples"]
     }
@@ -196,11 +206,11 @@ class ProcessorTest(test_case_utils.TfxTest):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
-      class_path: "__main__.RepeatStrategy"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatStrategy"
       config_json: "{\"num\": 2}"
     }
     resolver_steps {
-      class_path: "__main__.RepeatOp"
+      class_path: "tfx.orchestration.portable.input_resolution.processor_test.RepeatOp"
       config_json: "{\"num\": 2}"
     }
     """, config)

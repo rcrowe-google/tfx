@@ -30,7 +30,6 @@ from tfx.types import channel
 from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
 from tfx.utils import json_utils
-from tfx.utils import name_utils
 import yaml
 
 from google.protobuf import struct_pb2
@@ -58,8 +57,13 @@ _SUPPORTED_STANDARD_ARTIFACT_TYPES = frozenset(
      simple_artifacts.Metrics, simple_artifacts.Statistics,
      simple_artifacts.Dataset, simple_artifacts.File))
 
+
+def _get_full_class_path(klass: Type[types.Artifact]) -> str:
+  return klass.__module__ + '.' + klass.__qualname__
+
+
 TITLE_TO_CLASS_PATH = {
-    f'tfx.{klass.__qualname__}': name_utils.get_full_name(klass)
+    f'tfx.{klass.__qualname__}': _get_full_class_path(klass)
     for klass in _SUPPORTED_STANDARD_ARTIFACT_TYPES
 }
 
@@ -296,7 +300,7 @@ def get_artifact_schema(artifact_type: Type[artifact.Artifact]) -> str:
         os.path.dirname(__file__), 'artifact_types', 'Artifact.yaml')
     data = yaml.safe_load(fileio.open(schema_path, 'rb').read())
     # Encode class import path.
-    data['title'] = name_utils.get_full_name(artifact_type)
+    data['title'] = f'{artifact_type.__module__}.{artifact_type.__name__}'
     return yaml.dump(data, sort_keys=False)
 
 

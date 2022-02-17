@@ -23,7 +23,6 @@ from tfx.dsl.components.base import base_executor
 from tfx.scripts import run_executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from tfx.utils import name_utils
 
 
 class ArgsCapture:
@@ -62,7 +61,8 @@ class RunExecutorTest(tf.test.TestCase):
     outputs = {'y': [standard_artifacts.Examples()]}
     exec_properties = {'a': 'b'}
     args = [
-        '--executor_class_path=%s' % name_utils.get_full_name(FakeExecutor),
+        '--executor_class_path=%s.%s' %
+        (FakeExecutor.__module__, FakeExecutor.__name__),
         '--inputs=%s' % artifact_utils.jsonify_artifact_dict(inputs),
         '--outputs=%s' % artifact_utils.jsonify_artifact_dict(outputs),
         '--exec-properties=%s' % json.dumps(exec_properties),

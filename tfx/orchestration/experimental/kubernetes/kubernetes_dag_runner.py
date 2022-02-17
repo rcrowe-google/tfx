@@ -34,7 +34,6 @@ from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import json_utils
 from tfx.utils import kube_utils
-from tfx.utils import name_utils
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
@@ -218,8 +217,9 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       A container component that runs the wrapped component upon execution.
     """
 
-    component_launcher_class_path = name_utils.get_full_name(
-        component_launcher_class)
+    component_launcher_class_path = '.'.join([
+        component_launcher_class.__module__, component_launcher_class.__name__
+    ])
 
     serialized_component = json_utils.dumps(node_wrapper.NodeWrapper(component))
 
