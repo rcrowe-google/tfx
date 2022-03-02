@@ -45,6 +45,8 @@ from ml_metadata.proto import metadata_store_pb2
 # since there isn't a suitable MLMD transaction API.
 _PIPELINE_OPS_LOCK = threading.RLock()
 
+_BORG_TASK_SCHEDULER_CUSTOM_PROPERTY_KEY = '__borg_task_scheduler_job_info__'
+
 
 def _pipeline_ops_lock(fn):
   """Decorator to run `fn` within `_PIPELINE_OPS_LOCK` context."""
@@ -831,11 +833,10 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
   """Enqueues a node cancellation task if not already stopped.
 
   If the node has an ExecNodeTask in the task queue, issue a cancellation.
-  Otherwise, when pause=False, if the node has an active execution in MLMD but
-  no ExecNodeTask enqueued, it may be due to orchestrator restart after stopping
-  was initiated but before the schedulers could finish. So, enqueue an
-  ExecNodeTask with is_cancelled set to give a chance for the scheduler to
-  finish gracefully.
+  If the node has an active execution in MLMD but no ExecNodeTask enqueued, it
+  may be due to orchestrator restart after stopping was initiated but before the
+  schedulers could finish. So, enqueue an ExecNodeTask with is_cancelled set to
+  give a chance for the scheduler to finish gracefully.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
@@ -852,19 +853,28 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
   """
   exec_node_task_id = task_lib.exec_node_task_id_from_pipeline_node(
       pipeline, node)
+  cancel_type = (
+      task_lib.NodeCancelType.PAUSE_EXEC
+      if pause else task_lib.NodeCancelType.CANCEL_EXEC)
   if task_queue.contains_task_id(exec_node_task_id):
     task_queue.enqueue(
         task_lib.CancelNodeTask(
             node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
-            pause=pause))
+            cancel_type=cancel_type))
     return True
-  if not pause:
-    executions = task_gen_utils.get_executions(mlmd_handle, node)
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
-        mlmd_handle, pipeline, node, executions, is_cancelled=True)
-    if exec_node_task:
-      task_queue.enqueue(exec_node_task)
-      return True
+
+  executions = task_gen_utils.get_executions(mlmd_handle, node)
+  active_execution = task_gen_utils.get_latest_active_execution(executions)
+  exec_node_task = task_gen_utils.generate_task_from_active_execution(
+      mlmd_handle, pipeline, node, [active_execution], is_cancelled=cancel_type)
+  if not pause and exec_node_task:
+    task_queue.enqueue(exec_node_task)
+    return True
+  elif pause and exec_node_task and active_execution.custom_properties.get(
+      _BORG_TASK_SCHEDULER_CUSTOM_PROPERTY_KEY):
+    task_queue.enqueue(exec_node_task)
+    return True
+
   return False
 
 

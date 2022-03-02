@@ -18,6 +18,7 @@ core task generation loop based on the state of MLMD db.
 """
 
 import abc
+import enum
 from typing import Dict, Hashable, List, Optional, Type, TypeVar
 
 import attr
@@ -88,6 +89,15 @@ class Task(abc.ABC):
     return cls.__name__
 
 
+class NodeCancelType(enum.Enum):
+  # The node is being cancelled with no intention of reuse the same execution.
+  CANCEL_EXEC = 0
+
+  # The node is being paused with the intention of resuming the same execution
+  # after restart.
+  PAUSE_EXEC = 1
+
+
 @attr.s(auto_attribs=True, frozen=True)
 class ExecNodeTask(Task):
   """Task to instruct execution of a node in the pipeline.
@@ -103,9 +113,9 @@ class ExecNodeTask(Task):
     stateful_working_dir: Working directory for the node execution.
     tmp_dir: Temporary directory for the node execution.
     pipeline: The pipeline IR proto containing the node to be executed.
-    is_cancelled: Indicates whether this is a cancelled execution. The task
-      scheduler is expected to gracefully exit after doing any necessary
-      cleanup.
+    is_cancelled: Indicates whether this is a cancelled execution and the type
+      of this cancellation. The task scheduler is expected to gracefully exit
+      after doing any necessary cleanup.
   """
   node_uid: NodeUid
   execution_id: int
@@ -117,7 +127,8 @@ class ExecNodeTask(Task):
   stateful_working_dir: str
   tmp_dir: str
   pipeline: pipeline_pb2.Pipeline
-  is_cancelled: bool = False
+
+  is_cancelled: NodeCancelType = None
 
   @property
   def task_id(self) -> TaskId:
@@ -137,11 +148,10 @@ class CancelNodeTask(Task):
 
   Attributes:
     node_uid: Uid of the node to be cancelled.
-    pause: The node is being paused with the intention of resuming the same
-      execution after restart.
+    cancel_type: The type of this cancellation.
   """
   node_uid: NodeUid
-  pause: bool = False
+  cancel_type: NodeCancelType = NodeCancelType.CANCEL_EXEC
 
   @property
   def task_id(self) -> TaskId:

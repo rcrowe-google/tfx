@@ -43,11 +43,12 @@ class ResolvedInfo:
   input_artifacts: List[Optional[typing_utils.ArtifactMultiMap]]
 
 
-def _generate_task_from_execution(metadata_handler: metadata.Metadata,
-                                  pipeline: pipeline_pb2.Pipeline,
-                                  node: pipeline_pb2.PipelineNode,
-                                  execution: metadata_store_pb2.Execution,
-                                  is_cancelled: bool = False) -> task_lib.Task:
+def _generate_task_from_execution(
+    metadata_handler: metadata.Metadata,
+    pipeline: pipeline_pb2.Pipeline,
+    node: pipeline_pb2.PipelineNode,
+    execution: metadata_store_pb2.Execution,
+    is_cancelled: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
   exec_properties = extract_properties(execution)
@@ -79,7 +80,7 @@ def generate_task_from_active_execution(
     pipeline: pipeline_pb2.Pipeline,
     node: pipeline_pb2.PipelineNode,
     executions: Iterable[metadata_store_pb2.Execution],
-    is_cancelled: bool = False,
+    is_cancelled: Optional[task_lib.NodeCancelType] = None,
 ) -> Optional[task_lib.Task]:
   """Generates task from active execution (if any).
 
@@ -98,6 +99,9 @@ def generate_task_from_active_execution(
   Raises:
     RuntimeError: If there are multiple active executions for the node.
   """
+  if not executions or not any(executions):
+    return None
+
   active_executions = [
       e for e in executions if execution_lib.is_execution_active(e)
   ]
@@ -246,6 +250,18 @@ def get_latest_successful_execution(
       e for e in executions if execution_lib.is_execution_successful(e)
   ]
   return get_latest_execution(successful_executions)
+
+
+def get_latest_active_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns the latest active execution or `None` if no successful executions exist."""
+  if not executions:
+    return None
+  active_executions = [
+      e for e in executions if execution_lib.is_execution_active(e)
+  ]
+  return get_latest_execution(active_executions)
 
 
 def get_latest_execution(

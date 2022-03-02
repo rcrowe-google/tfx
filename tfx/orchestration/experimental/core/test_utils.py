@@ -14,6 +14,7 @@
 """Test utilities."""
 
 import os
+from typing import Optional
 import uuid
 
 from absl.testing.absltest import mock
@@ -139,17 +140,19 @@ def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
                                                         output_artifacts)
 
 
-def create_exec_node_task(node_uid,
-                          execution=None,
-                          contexts=None,
-                          exec_properties=None,
-                          input_artifacts=None,
-                          output_artifacts=None,
-                          executor_output_uri=None,
-                          stateful_working_dir=None,
-                          tmp_dir=None,
-                          pipeline=None,
-                          is_cancelled=False) -> task_lib.ExecNodeTask:
+def create_exec_node_task(
+    node_uid,
+    execution=None,
+    contexts=None,
+    exec_properties=None,
+    input_artifacts=None,
+    output_artifacts=None,
+    executor_output_uri=None,
+    stateful_working_dir=None,
+    tmp_dir=None,
+    pipeline=None,
+    is_cancelled: Optional[task_lib.NodeCancelType] = None
+) -> task_lib.ExecNodeTask:
   """Creates an `ExecNodeTask` for testing."""
   return task_lib.ExecNodeTask(
       node_uid=node_uid,

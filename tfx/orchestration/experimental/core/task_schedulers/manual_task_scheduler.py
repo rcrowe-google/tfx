@@ -94,5 +94,5 @@ class ManualTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]):
         status=status_lib.Status(code=status_lib.Code.CANCELLED),
         output=task_scheduler.ExecutorNodeOutput())
 
-  def cancel(self) -> None:
+  def cancel(self, cancel_type: task_lib.NodeCancelType) -> None:
     self._cancel.set()
