@@ -79,14 +79,14 @@ _MAX_ESTIMATED_STAGES_COUNT = 20000
 _BEAM_EXTRA_PACKAGE_PREFIX = '--extra_package='
 
 # Stats output filename keys.
-_ANOMALIES_FILE = 'SchemaDiff.pb'
-_STATS_FILE = 'FeatureStats.pb'
+ANOMALIES_FILE = 'SchemaDiff.pb'
+STATS_FILE = 'FeatureStats.pb'
 SAMPLE_FILE_NAME = 'Sample.rio'
 # TODO(b/215448985): Move these to a shared location with StatsGen.
 _SHARDED_OUTPUT_PARTITIONS = 10
 _SHARDED_STATS_PREFIX = 'FeatureStats.rio'
 
-_SCHEMA_FILE = 'schema.pbtxt'
+SCHEMA_FILE = 'schema.pbtxt'
 
 _ANOMALIES_KEY = 'anomalies'
 _SCHEMA_KEY = 'schema'
@@ -728,10 +728,10 @@ class TransformProcessor:
     else:
       stats_output_path = stats_output_loc
       stats_output_dir = os.path.dirname(stats_output_loc)
-      schema_output_path = os.path.join(stats_output_dir, _SCHEMA_FILE)
+      schema_output_path = os.path.join(stats_output_dir, SCHEMA_FILE)
       sharded_stats_output_prefix = os.path.join(stats_output_dir,
                                                  _SHARDED_STATS_PREFIX)
-      anomalies_output_path = os.path.join(stats_output_dir, _ANOMALIES_FILE)
+      anomalies_output_path = os.path.join(stats_output_dir, ANOMALIES_FILE)
 
     generated_stats = (
         pcoll
@@ -1364,7 +1364,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _STATS_FILE),
+                          STATS_FILE),
                   _SHARDED_STATS_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1374,7 +1374,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL],
-                          _SCHEMA_FILE)
+                          SCHEMA_FILE)
               }
             else:
               pre_transform_feature_stats_loc = os.path.join(
@@ -1439,7 +1439,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _STATS_FILE),
+                          STATS_FILE),
                   _SHARDED_STATS_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1449,13 +1449,13 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL],
-                          _SCHEMA_FILE),
+                          SCHEMA_FILE),
                   _ANOMALIES_KEY:
                       os.path.join(
                           stats_output_paths[
                               labels
                               .POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL],
-                          _ANOMALIES_FILE)
+                          ANOMALIES_FILE)
               }
             else:
               post_transform_feature_stats_loc = os.path.join(
