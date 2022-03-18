@@ -18,6 +18,7 @@ import uuid
 
 from absl.testing.absltest import mock
 from tfx import types
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -36,6 +37,10 @@ class TfxTest(test_case_utils.TfxTest):
 
   def setUp(self):
     mlmd_state.clear_in_memory_state()
+    event_observer.init()
+
+  def tearDown(self):
+    event_observer.shutdown()
 
 
 def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):

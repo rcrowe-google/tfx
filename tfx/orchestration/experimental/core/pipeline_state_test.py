@@ -13,12 +13,14 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.pipeline_state."""
 
+import dataclasses
 import os
 from typing import List
 from unittest import mock
 
 import tensorflow as tf
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -295,6 +297,14 @@ class PipelineStateTest(test_utils.TfxTest):
                                          pipeline_pb2.UpdateOptions())
 
   def test_initiate_node_start_stop(self):
+
+    events = []
+
+    def recorder(event):
+      events.append(event)
+
+    event_observer.register_observer(recorder)
+
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       node_uid = task_lib.NodeUid(
@@ -339,6 +349,42 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
         self.assertEqual(pstate.NodeState.STARTED, node_state.state)
+
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        pipeline_state.initiate_stop(
+            status_lib.Status(code=status_lib.Code.CANCELLED, message='msg'))
+
+    event_observer.get().testonly_wait()
+    want = [
+        event_observer.PipelineStarted(execution=None, pipeline_id='pipeline1'),
+        event_observer.NodeStateChange(
+            execution=None,
+            pipeline_id='pipeline1',
+            pipeline_run=None,
+            node_id='Trainer',
+            old_state='started',
+            new_state='starting'),
+        event_observer.NodeStateChange(
+            execution=None,
+            pipeline_id='pipeline1',
+            pipeline_run=None,
+            node_id='Trainer',
+            old_state='starting',
+            new_state='stopping'),
+        event_observer.NodeStateChange(
+            execution=None,
+            pipeline_id='pipeline1',
+            pipeline_run=None,
+            node_id='Trainer',
+            old_state='stopping',
+            new_state='started'),
+        event_observer.PipelineFinished(
+            execution=None, pipeline_id='pipeline1'),
+    ]
+    # Set execution to None, so we don't compare that field
+    got = [dataclasses.replace(x, execution=None) for x in events]
+    self.assertListEqual(want, got)
 
   def test_get_node_states_dict(self):
     with self._mlmd_connection as m:

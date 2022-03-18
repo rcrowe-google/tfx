@@ -26,6 +26,7 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import env
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.orchestration.experimental.core import task as task_lib
@@ -275,6 +276,9 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+    event_observer.get().notify(
+        event_observer.PipelineStarted(
+            execution=execution, pipeline_id=pipeline_uid.pipeline_id))
     record_state_change_time()
 
     return cls(
@@ -362,6 +366,10 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
+    event_observer.get().notify(
+        event_observer.PipelineFinished(
+            execution=self._execution,
+            pipeline_id=self.pipeline_uid.pipeline_id))
 
   def initiate_update(
       self,
@@ -478,6 +486,14 @@ class PipelineState:
     if old_state != node_state.state:
       logging.info('Changing node state: %s -> %s; node uid: %s', old_state,
                    node_state.state, node_uid)
+      event_observer.get().notify(
+          event_observer.NodeStateChange(
+              execution=self._execution,
+              pipeline_id=node_uid.pipeline_uid.pipeline_id,
+              pipeline_run=self.pipeline_run_id,
+              node_id=node_uid.node_id,
+              old_state=old_state,
+              new_state=node_state.state))
     _save_node_states_dict(self._execution, node_states_dict)
 
   def get_node_state(self,
